@@ -1,6 +1,16 @@
 from tests.conftest import make_docx_bytes
 
 
+def test_root(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["docs"] == "/docs"
+    assert data["health"] == "/health"
+    assert data["frontend"]
+
+
 def test_health(client):
     response = client.get("/health")
     assert response.status_code == 200
