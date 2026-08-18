@@ -1,0 +1,22 @@
+INFO:     Started server process [13368]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:62048 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62049 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62050 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62055 - "POST /api/jobs HTTP/1.1" 201 Created
+INFO:     127.0.0.1:62056 - "POST /api/resumes HTTP/1.1" 201 Created
+INFO:     127.0.0.1:62057 - "POST /api/screen HTTP/1.1" 200 OK
+2026-08-17 07:08:04,260 WARNING app.services.docx_parser: Failed to open/parse DOCX: File is not a zip file
+INFO:     127.0.0.1:62060 - "POST /api/screen/bulk HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62063 - "GET /api/screen/90ce6fca-da00-41f1-958e-c8306dc7a07e/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62064 - "GET /api/screen/90ce6fca-da00-41f1-958e-c8306dc7a07e/results?skills=Python,SQL HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62065 - "GET /api/screen/90ce6fca-da00-41f1-958e-c8306dc7a07e/audit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62066 - "GET /api/screen/90ce6fca-da00-41f1-958e-c8306dc7a07e/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62067 - "POST /api/screen/90ce6fca-da00-41f1-958e-c8306dc7a07e/3b1a12cf-ea80-468c-981c-c18c0e5892da/explain HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:51693 - "POST /api/jobs HTTP/1.1" 201 Created
+INFO:     127.0.0.1:51694 - "POST /api/jobs HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:51695 - "POST /api/jobs HTTP/1.1" 201 Created
+INFO:     127.0.0.1:51696 - "GET /api/screen/429e247c-4eec-4f84-925b-a5c66ac458b5/audit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59647 - "POST /api/screen HTTP/1.1" 200 OK

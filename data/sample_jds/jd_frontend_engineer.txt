@@ -1,0 +1,19 @@
+Frontend Engineer (New Grad)
+
+We are looking for a Frontend Engineer to build user-facing features for our
+web application.
+
+Required:
+JavaScript
+React
+HTML
+CSS
+
+Preferred:
+TypeScript
+Next.js
+GraphQL
+
+Requirements:
+0-1 years of experience.
+Bachelor's degree preferred.

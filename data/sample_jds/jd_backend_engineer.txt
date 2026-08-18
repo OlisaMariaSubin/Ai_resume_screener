@@ -1,0 +1,20 @@
+Backend Engineer (New Grad)
+
+We are hiring a Backend Engineer to join our platform team. You will build and
+maintain APIs that power our core product.
+
+Required:
+Python
+FastAPI
+SQL
+PostgreSQL
+Git
+
+Preferred:
+Docker
+AWS
+Kubernetes
+
+Requirements:
+0-2 years of experience.
+Bachelor's degree in Computer Science or a related field.

@@ -1,0 +1,18 @@
+Data Scientist (Campus Hire)
+
+Join our analytics team to build models that guide product decisions.
+
+Required:
+Python
+Machine Learning
+Pandas
+NumPy
+SQL
+
+Preferred:
+TensorFlow
+PyTorch
+scikit-learn
+
+Requirements:
+Master's degree in a quantitative field preferred.
