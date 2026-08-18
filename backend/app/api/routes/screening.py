@@ -12,6 +12,40 @@ from app.services import explanation_service, fairness_audit, screening_service,
 router = APIRouter()
 
 
+@router.post("/api/screen/{job_id}/rerun", response_model=ScreeningResultsResponse)
+def rerun_screening(job_id: str, db: Session = Depends(get_db)):
+    job = db.get(Job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    existing_rows = db.execute(
+        select(ScreeningResult).where(ScreeningResult.job_id == job_id)
+    ).scalars().all()
+    if not existing_rows:
+        raise HTTPException(status_code=422, detail="No screened resumes found for this job")
+
+    resume_ids = {row.resume_id for row in existing_rows}
+    resumes = db.execute(select(Resume).where(Resume.id.in_(resume_ids))).scalars().all()
+    if not resumes:
+        raise HTTPException(status_code=422, detail="No stored resumes found to re-run")
+
+    candidates = [
+        {
+            "id": resume.id,
+            "filename": resume.filename,
+            "raw_text": resume.raw_text,
+            "structured_data": resume.structured_data,
+        }
+        for resume in resumes
+    ]
+    results = screening_service.screen_candidates(job, candidates)
+    for result in results:
+        persist_result(db, job_id, result)
+
+    ranked = load_ranked_results(db, job_id)
+    return {"job_id": job_id, "results": ranked}
+
+
 def persist_result(db: Session, job_id: str, result: dict) -> ScreeningResult:
     """Upsert a screening result keyed by (job_id, candidate_id)."""
     existing = db.execute(
@@ -40,6 +74,8 @@ def persist_result(db: Session, job_id: str, result: dict) -> ScreeningResult:
         row.missing_skills = skills["missing"]
         row.missing_must_have = skills["missing_must_have"]
         row.missing_nice_to_have = skills["missing_nice_to_have"]
+
+    row.explanation = None
 
     if not existing:
         db.add(row)

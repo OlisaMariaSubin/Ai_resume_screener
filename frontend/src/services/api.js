@@ -33,6 +33,19 @@ async function request(path, options = {}) {
 export const api = {
   health: () => request("/health"),
 
+  parseJobDescription: ({ file, description }) => {
+    if (file) {
+      const form = new FormData();
+      form.append("file", file);
+      return request("/api/jobs/parse-preview", { method: "POST", body: form });
+    }
+    return request("/api/jobs/parse-preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description }),
+    });
+  },
+
   createJob: ({ title, description, file, scoringWeights }) => {
     if (file) {
       const form = new FormData();
@@ -49,6 +62,17 @@ export const api = {
   },
 
   getJob: (jobId) => request(`/api/jobs/${jobId}`),
+
+  updateJob: (jobId, { title, description, scoringWeights }) =>
+    request(`/api/jobs/${jobId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        description,
+        scoring_weights: scoringWeights || undefined,
+      }),
+    }),
 
   uploadResume: (file) => {
     const form = new FormData();
@@ -74,6 +98,8 @@ export const api = {
     const query = skills && skills.length ? `?skills=${encodeURIComponent(skills.join(","))}` : "";
     return request(`/api/screen/${jobId}/results${query}`);
   },
+
+  rerunScreening: (jobId) => request(`/api/screen/${jobId}/rerun`, { method: "POST" }),
 
   explainScore: (jobId, resumeId) =>
     request(`/api/screen/${jobId}/${resumeId}/explain`, { method: "POST" }),

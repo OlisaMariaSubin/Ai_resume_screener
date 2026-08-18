@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import Home from "./pages/Home.jsx";
 import Results from "./pages/Results.jsx";
+import RerunScreening from "./pages/RerunScreening.jsx";
 import Screening from "./pages/Screening.jsx";
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/screen" element={<Screening />} />
+          <Route path="/results/:jobId/edit" element={<RerunScreening />} />
           <Route path="/results/:jobId" element={<Results />} />
         </Routes>
       </main>

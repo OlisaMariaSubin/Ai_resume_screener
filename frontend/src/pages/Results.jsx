@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import CandidateCard from "../components/CandidateCard/CandidateCard.jsx";
 import FairnessAuditPanel from "../components/FairnessAuditPanel/FairnessAuditPanel.jsx";
 import RequirementTrendsPanel from "../components/RequirementTrendsPanel/RequirementTrendsPanel.jsx";
@@ -48,7 +48,12 @@ export default function Results() {
 
   return (
     <div>
-      <h1>Results</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8 }}>
+        <h1 style={{ margin: 0 }}>Results</h1>
+        <Link to={`/results/${jobId}/edit`} className="btn btn-secondary">
+          Edit job description &amp; re-run
+        </Link>
+      </div>
 
       {weightsUsed && (
         <p className="weights-label">

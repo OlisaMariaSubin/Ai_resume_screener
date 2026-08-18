@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.database.database import get_db
 from app.models.job import Job
-from app.schemas.job import JobResponse
+from app.schemas.job import JobParsePreviewResponse, JobResponse, JobUpdateRequest
 from app.services import scoring
 from app.services.jd_parser import parse_jd_file, parse_jd_text
 from app.utils.file_validation import ALLOWED_JD_EXTENSIONS, FileValidationError, sanitize_filename, validate_upload
@@ -20,6 +20,7 @@ def _job_response(job: Job) -> JobResponse:
     return JobResponse(
         job_id=job.id,
         title=job.title,
+        description=job.description,
         must_have_skills=job.must_have_skills,
         nice_to_have_skills=job.nice_to_have_skills,
         experience_requirements=job.experience_requirements,
@@ -28,8 +29,41 @@ def _job_response(job: Job) -> JobResponse:
     )
 
 
-@router.post("/api/jobs", response_model=JobResponse, status_code=201)
-async def create_job(request: Request, db: Session = Depends(get_db)):
+def _preview_response(data: dict) -> JobParsePreviewResponse:
+    return JobParsePreviewResponse(
+        title=data["title"],
+        description=data["description"],
+        must_have_skills=data["must_have_skills"],
+        nice_to_have_skills=data["nice_to_have_skills"],
+        experience_requirements=data["experience_requirements"],
+        education_requirements=data["education_requirements"],
+    )
+
+
+def _normalize_weights(scoring_weights_payload) -> tuple[dict | None, str | None]:
+    if scoring_weights_payload is None:
+        return None, None
+    valid, error = scoring.validate_weights(scoring_weights_payload)
+    if not valid:
+        return None, error
+    return {
+        "skill_match": float(scoring_weights_payload["skill_match"]),
+        "text_similarity": float(scoring_weights_payload["text_similarity"]),
+        "experience": float(scoring_weights_payload["experience"]),
+        "education": float(scoring_weights_payload["education"]),
+    }, None
+
+
+def _apply_parsed_data(job: Job, data: dict, title_override: str = "") -> None:
+    job.title = title_override or data["title"] or job.title
+    job.description = data["description"]
+    job.must_have_skills = data["must_have_skills"]
+    job.nice_to_have_skills = data["nice_to_have_skills"]
+    job.experience_requirements = data["experience_requirements"]
+    job.education_requirements = data["education_requirements"]
+
+
+async def _parse_job_from_request(request: Request) -> tuple[dict, str, dict | None]:
     settings = get_settings()
     content_type = request.headers.get("content-type", "")
     scoring_weights_payload = None
@@ -76,29 +110,25 @@ async def create_job(request: Request, db: Session = Depends(get_db)):
     if not parsed["success"]:
         raise HTTPException(status_code=422, detail=parsed["error"])
 
-    data = parsed["data"]
+    weights, weights_error = _normalize_weights(scoring_weights_payload)
+    if weights_error:
+        raise HTTPException(status_code=422, detail=weights_error)
 
-    weights = None
-    if scoring_weights_payload is not None:
-        valid, error = scoring.validate_weights(scoring_weights_payload)
-        if not valid:
-            raise HTTPException(status_code=422, detail=error)
-        weights = {
-            "skill_match": float(scoring_weights_payload["skill_match"]),
-            "text_similarity": float(scoring_weights_payload["text_similarity"]),
-            "experience": float(scoring_weights_payload["experience"]),
-            "education": float(scoring_weights_payload["education"]),
-        }
+    return parsed["data"], title, weights
 
-    job = Job(
-        title=title or data["title"],
-        description=data["description"],
-        must_have_skills=data["must_have_skills"],
-        nice_to_have_skills=data["nice_to_have_skills"],
-        experience_requirements=data["experience_requirements"],
-        education_requirements=data["education_requirements"],
-        scoring_weights=weights,
-    )
+
+@router.post("/api/jobs/parse-preview", response_model=JobParsePreviewResponse)
+async def parse_job_preview(request: Request):
+    data, _, _ = await _parse_job_from_request(request)
+    return _preview_response(data)
+
+
+@router.post("/api/jobs", response_model=JobResponse, status_code=201)
+async def create_job(request: Request, db: Session = Depends(get_db)):
+    data, title, weights = await _parse_job_from_request(request)
+
+    job = Job(scoring_weights=weights)
+    _apply_parsed_data(job, data, title)
     db.add(job)
     db.commit()
     db.refresh(job)
@@ -111,4 +141,33 @@ def get_job(job_id: str, db: Session = Depends(get_db)):
     job = db.get(Job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+    return _job_response(job)
+
+
+@router.patch("/api/jobs/{job_id}", response_model=JobResponse)
+def update_job(job_id: str, payload: JobUpdateRequest, db: Session = Depends(get_db)):
+    job = db.get(Job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if payload.description is not None:
+        description_text = payload.description.strip()
+        if not description_text:
+            raise HTTPException(status_code=422, detail="description must not be blank")
+        parsed = parse_jd_text(description_text)
+        if not parsed["success"]:
+            raise HTTPException(status_code=422, detail=parsed["error"])
+        _apply_parsed_data(job, parsed["data"], (payload.title or "").strip())
+
+    if payload.title is not None and payload.description is None:
+        job.title = payload.title.strip() or job.title
+
+    if payload.scoring_weights is not None:
+        weights, weights_error = _normalize_weights(payload.scoring_weights)
+        if weights_error:
+            raise HTTPException(status_code=422, detail=weights_error)
+        job.scoring_weights = weights
+
+    db.commit()
+    db.refresh(job)
     return _job_response(job)
