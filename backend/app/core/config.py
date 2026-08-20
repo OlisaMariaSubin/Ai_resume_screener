@@ -1,5 +1,4 @@
 from functools import lru_cache
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,6 +24,15 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.6-flash"
 
     frontend_origin: str = "http://localhost:5173"
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        # Strip trailing slashes so origin matching doesn't fail preflight checks
+        return [
+            origin.strip().rstrip("/") 
+            for origin in self.frontend_origin.split(",") 
+            if origin.strip()
+        ]
 
     @property
     def default_weights(self) -> dict:

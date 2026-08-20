@@ -9,8 +9,13 @@ class ApiError extends Error {
 
 async function request(path, options = {}) {
   let response;
+  // Ensure no double slashes or missing slashes between base URL and path
+  const cleanBase = API_BASE_URL.replace(/\/+$/, "");
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  const targetUrl = `${cleanBase}${cleanPath}`;
+
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, options);
+    response = await fetch(targetUrl, options);
   } catch (err) {
     throw new ApiError("Could not reach the server. Is the backend running?", 0);
   }
@@ -112,8 +117,9 @@ export const api = {
 
   downloadExcel: async (jobId) => {
     let response;
+    const cleanBase = API_BASE_URL.replace(/\/+$/, "");
     try {
-      response = await fetch(`${API_BASE_URL}/api/screen/${jobId}/export/excel`);
+      response = await fetch(`${cleanBase}/api/screen/${jobId}/export/excel`);
     } catch (err) {
       throw new ApiError("Could not reach the server. Is the backend running?", 0);
     }

@@ -233,10 +233,18 @@ it never fabricates a passing score.
 ## Deployment
 
 - **Backend:** any Render/Railway-style host that can run
-  `uvicorn app.main:app --host 0.0.0.0 --port $PORT` from `backend/`, with
-  `DATABASE_URL` pointed at a managed Postgres instance for production.
+  `uvicorn app.main:app --host 0.0.0.0 --port $PORT` from `backend/`. The
+  included Dockerfile uses Render's `PORT` automatically. Set
+  `FRONTEND_ORIGIN` to the Vercel URL, optionally followed by a comma-separated
+  local origin, for example
+  `https://your-frontend-domain.vercel.app,http://localhost:5173`. Set
+  `DATABASE_URL` to a managed Postgres instance for production.
 - **Frontend:** any Vercel-style static host building `frontend/` with
   `npm run build` and serving `dist/`; set `VITE_API_BASE_URL` to the
   deployed backend URL at build time.
+
+The backend is Python/FastAPI, so it does not have a backend `package.json` or
+Node `app.listen` script. Its equivalent start command is the Uvicorn command
+above, and `backend/requirements.txt` defines the runtime dependencies.
 - **Docker:** `docker-compose.yml` runs both services together for local or
   single-host deployment.

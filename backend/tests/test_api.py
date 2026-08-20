@@ -17,6 +17,21 @@ def test_health(client):
     assert response.json() == {"status": "ok"}
 
 
+def test_cors_allows_configured_frontend(client):
+    from app.core.config import get_settings
+
+    origin = get_settings().allowed_origins[0]
+    response = client.options(
+        "/health",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+
+
 def test_create_job_from_text(client):
     payload = {
         "title": "Backend Engineer",
