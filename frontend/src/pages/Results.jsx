@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import CandidateCard from "../components/CandidateCard/CandidateCard.jsx";
+import EligibilitySummaryPanel from "../components/EligibilitySummaryPanel/EligibilitySummaryPanel.jsx";
 import FairnessAuditPanel from "../components/FairnessAuditPanel/FairnessAuditPanel.jsx";
 import RequirementTrendsPanel from "../components/RequirementTrendsPanel/RequirementTrendsPanel.jsx";
 import ResultsTable from "../components/ResultsTable/ResultsTable.jsx";
@@ -15,6 +16,9 @@ export default function Results() {
   const [skillFilter, setSkillFilter] = useState([]);
   const [showAudit, setShowAudit] = useState(false);
   const [showTrends, setShowTrends] = useState(false);
+  const [eligibilitySummary, setEligibilitySummary] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
 
   useEffect(() => {
     api
@@ -22,6 +26,25 @@ export default function Results() {
       .then((data) => setResults(data.results))
       .catch((err) => setError(err.message));
   }, [jobId, skillFilter]);
+
+  useEffect(() => {
+    api
+      .getTrends(jobId)
+      .then((data) => setEligibilitySummary(data.eligibility_summary))
+      .catch(() => {});
+  }, [jobId, results]);
+
+  const handleDownloadExcel = async () => {
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      await api.downloadExcel(jobId);
+    } catch (err) {
+      setDownloadError(err.message);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const scored = useMemo(() => (results || []).filter((r) => r.status === "scored"), [results]);
 
@@ -54,10 +77,19 @@ export default function Results() {
           <h1>Screening results</h1>
           <p className="subtitle">A ranked view of fit, with the reasoning close at hand.</p>
         </div>
-        <Link to={`/results/${jobId}/edit`} className="btn btn-secondary">
-          Edit brief <span aria-hidden="true">-&gt;</span>
-        </Link>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button type="button" className="btn btn-secondary" onClick={handleDownloadExcel} disabled={downloading}>
+            {downloading ? "Preparing…" : "Download Screening Excel"}
+          </button>
+          <Link to={`/results/${jobId}/edit`} className="btn btn-secondary">
+            Edit brief <span aria-hidden="true">-&gt;</span>
+          </Link>
+        </div>
       </div>
+
+      {downloadError && <div className="error-banner">{downloadError}</div>}
+
+      <EligibilitySummaryPanel summary={eligibilitySummary} />
 
       {weightsUsed && (
         <p className="weights-label">

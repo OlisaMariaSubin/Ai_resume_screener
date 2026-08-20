@@ -1,5 +1,6 @@
 import re
 
+from app.services import eligibility_service
 from app.services.docx_parser import extract_text_from_docx
 from app.services.pdf_parser import extract_text_from_pdf
 from app.services.skill_extractor import extract_skills_from_text
@@ -46,6 +47,15 @@ def _split_jd_sections(text: str) -> dict[str, list[str]]:
             classified = _classify_section(line)
             current = classified or "general"
             sections.setdefault(current, [])
+            # A bare label line ("Required:", "Nice to have") carries no content of its
+            # own and is discarded. But a line that only *contains* a must/nice-to-have
+            # keyword inline ("Bachelor's degree required", "M.Tech preferred") is real
+            # content, not just a label - keep it under the section it was classified
+            # into, or its text (degree wording, skills, ...) would be silently lost.
+            stripped_label = line.strip().strip(":").lower()
+            is_bare_label = classified is not None and stripped_label in MUST_HAVE_HEADERS + NICE_TO_HAVE_HEADERS
+            if classified is not None and not is_bare_label:
+                sections[current].append(line)
             continue
         sections.setdefault(current, [])
         sections[current].append(line)
@@ -102,6 +112,10 @@ def parse_jd_text(raw_text: str) -> dict:
             if stripped and stripped not in education_requirements:
                 education_requirements.append(stripped)
 
+    education_eligibility = eligibility_service.derive_education_eligibility(
+        must_have_text, nice_to_have_text, general_text
+    )
+
     return {
         "success": True,
         "data": {
@@ -112,6 +126,7 @@ def parse_jd_text(raw_text: str) -> dict:
             "general_skills": unclassified_extra,
             "experience_requirements": experience_requirements,
             "education_requirements": education_requirements,
+            "education_eligibility": education_eligibility,
             "raw_text": cleaned,
         },
     }

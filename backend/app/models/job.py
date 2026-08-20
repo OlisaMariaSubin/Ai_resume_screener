@@ -19,4 +19,8 @@ class Job(Base):
     education_requirements: Mapped[list] = mapped_column(JSON, default=list)
     # Nullable: null means "use the system default" scoring weights (Section 9.5)
     scoring_weights: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
+    # Nullable: null means "no mandatory education requirement was detected" - see
+    # eligibility_service.derive_education_eligibility / NONE_CONFIG. Recruiter-editable
+    # via PATCH /api/jobs/{id}, same override pattern as scoring_weights.
+    eligibility_config: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

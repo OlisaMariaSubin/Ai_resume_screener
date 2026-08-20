@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -7,7 +8,7 @@ from app.models.job import Job
 from app.models.resume import Resume
 from app.models.screening import ScreeningResult
 from app.schemas.screening import ScreeningResultSchema, ScreeningResultsResponse, SingleScreenRequest
-from app.services import explanation_service, fairness_audit, screening_service, trend_analysis
+from app.services import excel_export_service, explanation_service, fairness_audit, screening_service, trend_analysis
 
 router = APIRouter()
 
@@ -38,7 +39,9 @@ def rerun_screening(job_id: str, db: Session = Depends(get_db)):
         }
         for resume in resumes
     ]
-    results = screening_service.screen_candidates(job, candidates)
+    # Re-runs re-evaluate eligibility too (not just scoring) - the recruiter may have
+    # edited the JD's education requirement or eligibility_config since the last run.
+    results = screening_service.run_pipeline(job, candidates)
     for result in results:
         persist_result(db, job_id, result)
 
@@ -60,6 +63,14 @@ def persist_result(db: Session, job_id: str, result: dict) -> ScreeningResult:
     row.status = result["status"]
     row.failure_reason = result.get("failure_reason")
 
+    row.eligibility_status = result.get("eligibility_status")
+    row.eligibility_reason = result.get("eligibility_reason")
+    row.overqualified = bool(result.get("overqualified", False))
+    row.overqualification_reason = result.get("overqualification_reason")
+    row.extracted_degree = result.get("extracted_degree", "")
+    row.extracted_branch = result.get("extracted_branch", "")
+    row.required_degree_text = result.get("required_degree_text")
+
     score = result.get("score")
     if score:
         row.match_score = score["overall"]
@@ -67,6 +78,12 @@ def persist_result(db: Session, job_id: str, result: dict) -> ScreeningResult:
         row.embedding_score = score["embedding_similarity"]
         row.skill_match_pct = score["skill_match_pct"]
         row.weights_used = score["weights_used"]
+    else:
+        row.match_score = None
+        row.tfidf_score = None
+        row.embedding_score = None
+        row.skill_match_pct = None
+        row.weights_used = {}
 
     skills = result.get("skills")
     if skills:
@@ -74,6 +91,11 @@ def persist_result(db: Session, job_id: str, result: dict) -> ScreeningResult:
         row.missing_skills = skills["missing"]
         row.missing_must_have = skills["missing_must_have"]
         row.missing_nice_to_have = skills["missing_nice_to_have"]
+    else:
+        row.matched_skills = []
+        row.missing_skills = []
+        row.missing_must_have = []
+        row.missing_nice_to_have = []
 
     row.explanation = None
 
@@ -84,17 +106,30 @@ def persist_result(db: Session, job_id: str, result: dict) -> ScreeningResult:
     return row
 
 
+def _eligibility_fields(row: ScreeningResult) -> dict:
+    return {
+        "eligibility_status": row.eligibility_status,
+        "eligibility_reason": row.eligibility_reason,
+        "overqualified": row.overqualified,
+        "overqualification_reason": row.overqualification_reason,
+        "extracted_degree": row.extracted_degree,
+        "extracted_branch": row.extracted_branch,
+        "required_degree_text": row.required_degree_text,
+    }
+
+
 def row_to_result_dict(row: ScreeningResult) -> dict:
-    if row.status == "failed":
+    if row.status != "scored":
         return {
             "candidate_id": row.resume_id,
             "candidate_name": row.candidate_name,
             "filename": row.filename,
-            "status": "failed",
+            "status": row.status,
             "failure_reason": row.failure_reason,
             "score": None,
             "skills": None,
             "ranking": None,
+            **_eligibility_fields(row),
         }
     return {
         "candidate_id": row.resume_id,
@@ -116,6 +151,7 @@ def row_to_result_dict(row: ScreeningResult) -> dict:
             "missing_nice_to_have": row.missing_nice_to_have,
         },
         "ranking": None,
+        **_eligibility_fields(row),
     }
 
 
@@ -124,12 +160,30 @@ def load_ranked_results(db: Session, job_id: str) -> list[dict]:
     results = [row_to_result_dict(row) for row in rows]
 
     scored = [r for r in results if r["status"] == "scored"]
+    ineligible = [r for r in results if r["status"] == "ineligible"]
     failed = [r for r in results if r["status"] == "failed"]
     scored.sort(key=lambda r: r["score"]["overall"], reverse=True)
     for i, r in enumerate(scored, start=1):
         r["ranking"] = i
 
-    return scored + failed
+    return scored + ineligible + failed
+
+
+def eligibility_summary(results: list[dict]) -> dict:
+    """Section 8 - Eligibility summary: Total uploaded / Eligible / Ineligible / Not
+    screened / Overqualified, computed over whatever result set the caller passes in
+    (a job's full persisted results, or one bulk-upload batch)."""
+    total = len(results)
+    eligible = sum(1 for r in results if r["status"] == "scored")
+    ineligible = sum(1 for r in results if r["status"] == "ineligible")
+    overqualified = sum(1 for r in results if r.get("overqualified"))
+    return {
+        "total_uploaded": total,
+        "eligible": eligible,
+        "ineligible": ineligible,
+        "not_screened": ineligible,
+        "overqualified": overqualified,
+    }
 
 
 @router.post("/api/screen", response_model=ScreeningResultSchema)
@@ -147,7 +201,7 @@ def screen_single(payload: SingleScreenRequest, db: Session = Depends(get_db)):
         "raw_text": resume.raw_text,
         "structured_data": resume.structured_data,
     }
-    results = screening_service.screen_candidates(job, [candidate])
+    results = screening_service.run_pipeline(job, [candidate])
     row = persist_result(db, job.id, results[0])
 
     ranked = load_ranked_results(db, job.id)
@@ -240,4 +294,35 @@ def get_trends(job_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Job not found")
 
     results = load_ranked_results(db, job_id)
-    return {"trends": trend_analysis.compute_skill_trends(results)}
+    trends = trend_analysis.compute_skill_trends(results, job)
+    return {
+        "trends": trends,
+        "insights": trend_analysis.compute_recruiter_insights(trends),
+        "eligibility_summary": eligibility_summary(results),
+    }
+
+
+@router.get("/api/screen/{job_id}/export/excel")
+def export_excel(job_id: str, db: Session = Depends(get_db)):
+    job = db.get(Job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    results = load_ranked_results(db, job_id)
+    trends = trend_analysis.compute_skill_trends(results, job)
+    insights = trend_analysis.compute_recruiter_insights(trends)
+
+    scored_ids = [r["candidate_id"] for r in results if r["status"] == "scored"]
+    resumes = db.execute(select(Resume).where(Resume.id.in_(scored_ids))).scalars().all() if scored_ids else []
+    resume_lookup = {resume.id: resume.structured_data for resume in resumes}
+
+    workbook = excel_export_service.build_screening_workbook(job, results, trends, insights, resume_lookup)
+
+    safe_title = "".join(c if c.isalnum() or c in "-_" else "_" for c in (job.title or "screening")).strip("_")
+    filename = f"screening_results_{safe_title or 'job'}.xlsx"
+
+    return StreamingResponse(
+        workbook,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

@@ -26,6 +26,7 @@ export default function ResultsTable({ results, onSelect }) {
     return filtered;
   }, [results, sortDesc, minScore, search, onlyMissingMustHave]);
 
+  const ineligible = results.filter((r) => r.status === "ineligible");
   const failed = results.filter((r) => r.status === "failed");
 
   return (
@@ -90,6 +91,23 @@ export default function ResultsTable({ results, onSelect }) {
           )}
         </tbody>
       </table>
+
+      {ineligible.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <h2 style={{ fontSize: "1rem" }}>Not eligible for screening</h2>
+          <p className="muted">
+            These candidates failed a mandatory eligibility requirement and were never scored.
+          </p>
+          <ul>
+            {ineligible.map((r) => (
+              <li key={r.candidate_id} className="muted">
+                {r.candidate_name || r.filename}
+                {r.overqualified ? " (overqualified)" : ""}: {r.eligibility_reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {failed.length > 0 && (
         <div style={{ marginTop: 20 }}>

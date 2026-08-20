@@ -26,6 +26,13 @@ class ScreeningResultSchema(BaseModel):
     explanation: str | None = None
     status: str = "scored"
     failure_reason: str | None = None
+    eligibility_status: str | None = None
+    eligibility_reason: str | None = None
+    overqualified: bool = False
+    overqualification_reason: str | None = None
+    extracted_degree: str = ""
+    extracted_branch: str = ""
+    required_degree_text: str | None = None
 
 
 class ScreeningResultsResponse(BaseModel):

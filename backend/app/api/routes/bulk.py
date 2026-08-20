@@ -10,6 +10,7 @@ from app.models.job import Job
 from app.models.resume import Resume
 from app.schemas.screening import ScreeningResultsResponse
 from app.services.bulk_processor import process_bulk_upload
+from app.services.eligibility_service import NOT_EVALUATED_FIELDS
 from app.utils.file_validation import ALLOWED_EXTENSIONS, FileValidationError, sanitize_filename, validate_upload
 
 router = APIRouter()
@@ -47,6 +48,7 @@ async def bulk_screen(
                     "score": None,
                     "skills": None,
                     "ranking": None,
+                    **NOT_EVALUATED_FIELDS,
                 }
             )
             continue

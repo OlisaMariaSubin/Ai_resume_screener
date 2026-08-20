@@ -2,7 +2,17 @@
 Callers (API routes, bulk_processor) are responsible for persistence.
 """
 from app.core.config import get_settings
-from app.services import embedding_matcher, scoring, tfidf_matcher
+from app.services import eligibility_service, embedding_matcher, scoring, tfidf_matcher
+
+_ELIGIBLE_DEFAULTS = {
+    "eligibility_status": "ELIGIBLE",
+    "eligibility_reason": None,
+    "overqualified": False,
+    "overqualification_reason": None,
+    "extracted_degree": "",
+    "extracted_branch": "",
+    "required_degree_text": None,
+}
 
 
 def _text_similarity_pct(tfidf_sim: float, embedding_sim: float | None, skill_match_pct: float, settings) -> float:
@@ -71,6 +81,7 @@ def screen_candidates(job, candidates: list[dict]) -> list[dict]:
                 "filename": candidate.get("filename", ""),
                 "status": "scored",
                 "failure_reason": None,
+                **_ELIGIBLE_DEFAULTS,
                 "score": {
                     "overall": overall_result["overall"],
                     "skill_match_pct": skill_result["skill_match_pct"],
@@ -90,5 +101,47 @@ def screen_candidates(job, candidates: list[dict]) -> list[dict]:
     results.sort(key=lambda r: r["score"]["overall"], reverse=True)
     for rank, result in enumerate(results, start=1):
         result["ranking"] = rank
+
+    return results
+
+
+def _ineligible_result(candidate: dict, eligibility: dict) -> dict:
+    structured = candidate.get("structured_data") or {}
+    return {
+        "candidate_id": candidate["id"],
+        "candidate_name": structured.get("name") or candidate.get("filename", ""),
+        "filename": candidate.get("filename", ""),
+        "status": "ineligible",
+        "failure_reason": None,
+        "score": None,
+        "skills": None,
+        "ranking": None,
+        **eligibility,
+    }
+
+
+def run_pipeline(job, candidates: list[dict]) -> list[dict]:
+    """The single entry point every route/bulk-processor should call: runs the
+    eligibility pre-screening gate (Section 3) and only sends candidates who pass it
+    into screen_candidates(). Ineligible candidates get eligibility_status=INELIGIBLE,
+    status="ineligible", score=None - screening never executes for them, so their
+    result can never carry a contaminated score.
+    """
+    eligible_candidates = []
+    results = []
+
+    for candidate in candidates:
+        structured = candidate.get("structured_data") or {}
+        eligibility = eligibility_service.evaluate_eligibility(structured, job)
+        if eligibility["eligibility_status"] == "INELIGIBLE":
+            results.append(_ineligible_result(candidate, eligibility))
+        else:
+            eligible_candidates.append((candidate, eligibility))
+
+    scored = screen_candidates(job, [c for c, _ in eligible_candidates]) if eligible_candidates else []
+    eligibility_by_id = {c["id"]: elig for c, elig in eligible_candidates}
+    for result in scored:
+        result.update(eligibility_by_id[result["candidate_id"]])
+        results.append(result)
 
     return results

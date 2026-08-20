@@ -109,6 +109,39 @@ export const api = {
   getAudit: (jobId) => request(`/api/screen/${jobId}/audit`),
 
   getTrends: (jobId) => request(`/api/screen/${jobId}/trends`),
+
+  downloadExcel: async (jobId) => {
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}/api/screen/${jobId}/export/excel`);
+    } catch (err) {
+      throw new ApiError("Could not reach the server. Is the backend running?", 0);
+    }
+    if (!response.ok) {
+      let detail = `Request failed (${response.status})`;
+      try {
+        const body = await response.json();
+        detail = body.detail || detail;
+      } catch {
+        // response had no JSON body
+      }
+      throw new ApiError(detail, response.status);
+    }
+
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="?([^";]+)"?/);
+    const filename = match ? match[1] : `screening_results_${jobId}.xlsx`;
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };
 
 export { ApiError };

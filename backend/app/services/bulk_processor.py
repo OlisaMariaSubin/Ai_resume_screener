@@ -1,7 +1,8 @@
 import uuid
 
+from app.services.eligibility_service import NOT_EVALUATED_FIELDS
 from app.services.resume_parser import parse_resume_bytes
-from app.services.screening_service import screen_candidates
+from app.services.screening_service import run_pipeline
 
 
 def process_bulk_upload(job, files: list[dict]) -> dict:
@@ -31,6 +32,7 @@ def process_bulk_upload(job, files: list[dict]) -> dict:
                     "score": None,
                     "skills": None,
                     "ranking": None,
+                    **NOT_EVALUATED_FIELDS,
                 }
             )
             continue
@@ -46,6 +48,6 @@ def process_bulk_upload(job, files: list[dict]) -> dict:
         )
         parsed_resumes.append({"id": resume_id, "filename": file["filename"], "data": data})
 
-    scored_results = screen_candidates(job, candidates) if candidates else []
+    pipeline_results = run_pipeline(job, candidates) if candidates else []
 
-    return {"results": scored_results + failed_results, "parsed_resumes": parsed_resumes}
+    return {"results": pipeline_results + failed_results, "parsed_resumes": parsed_resumes}

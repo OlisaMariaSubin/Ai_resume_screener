@@ -8,7 +8,7 @@ from app.core.config import get_settings
 from app.database.database import get_db
 from app.models.job import Job
 from app.schemas.job import JobParsePreviewResponse, JobResponse, JobUpdateRequest
-from app.services import scoring
+from app.services import eligibility_service, scoring
 from app.services.jd_parser import parse_jd_file, parse_jd_text
 from app.utils.file_validation import ALLOWED_JD_EXTENSIONS, FileValidationError, sanitize_filename, validate_upload
 
@@ -26,6 +26,7 @@ def _job_response(job: Job) -> JobResponse:
         experience_requirements=job.experience_requirements,
         education_requirements=job.education_requirements,
         scoring_weights=job.scoring_weights,
+        eligibility_config=job.eligibility_config,
     )
 
 
@@ -37,6 +38,7 @@ def _preview_response(data: dict) -> JobParsePreviewResponse:
         nice_to_have_skills=data["nice_to_have_skills"],
         experience_requirements=data["experience_requirements"],
         education_requirements=data["education_requirements"],
+        education_eligibility=data["education_eligibility"],
     )
 
 
@@ -54,6 +56,17 @@ def _normalize_weights(scoring_weights_payload) -> tuple[dict | None, str | None
     }, None
 
 
+def _normalize_eligibility_config(eligibility_config_payload) -> tuple[dict | None, str | None]:
+    """Validate a recruiter-supplied eligibility_config override (Section 5/6 - the
+    hard filter must be configurable, not just JD-derived)."""
+    if eligibility_config_payload is None:
+        return None, None
+    valid, error = eligibility_service.validate_eligibility_config(eligibility_config_payload)
+    if not valid:
+        return None, error
+    return eligibility_service.normalize_eligibility_config(eligibility_config_payload), None
+
+
 def _apply_parsed_data(job: Job, data: dict, title_override: str = "") -> None:
     job.title = title_override or data["title"] or job.title
     job.description = data["description"]
@@ -61,12 +74,14 @@ def _apply_parsed_data(job: Job, data: dict, title_override: str = "") -> None:
     job.nice_to_have_skills = data["nice_to_have_skills"]
     job.experience_requirements = data["experience_requirements"]
     job.education_requirements = data["education_requirements"]
+    job.eligibility_config = data["education_eligibility"]
 
 
-async def _parse_job_from_request(request: Request) -> tuple[dict, str, dict | None]:
+async def _parse_job_from_request(request: Request) -> tuple[dict, str, dict | None, dict | None]:
     settings = get_settings()
     content_type = request.headers.get("content-type", "")
     scoring_weights_payload = None
+    eligibility_config_payload = None
 
     if content_type.startswith("multipart/form-data"):
         form = await request.form()
@@ -80,6 +95,13 @@ async def _parse_job_from_request(request: Request) -> tuple[dict, str, dict | N
                 scoring_weights_payload = json.loads(weights_raw)
             except json.JSONDecodeError:
                 raise HTTPException(status_code=422, detail="scoring_weights must be valid JSON")
+
+        eligibility_raw = form.get("eligibility_config")
+        if eligibility_raw:
+            try:
+                eligibility_config_payload = json.loads(eligibility_raw)
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=422, detail="eligibility_config must be valid JSON")
 
         if upload is not None and getattr(upload, "filename", ""):
             filename = sanitize_filename(upload.filename)
@@ -103,6 +125,7 @@ async def _parse_job_from_request(request: Request) -> tuple[dict, str, dict | N
         title = (body.get("title") or "").strip()
         description_text = (body.get("description") or "").strip()
         scoring_weights_payload = body.get("scoring_weights")
+        eligibility_config_payload = body.get("eligibility_config")
         if not description_text:
             raise HTTPException(status_code=422, detail="description must not be blank")
         parsed = parse_jd_text(description_text)
@@ -114,21 +137,27 @@ async def _parse_job_from_request(request: Request) -> tuple[dict, str, dict | N
     if weights_error:
         raise HTTPException(status_code=422, detail=weights_error)
 
-    return parsed["data"], title, weights
+    eligibility_config, eligibility_error = _normalize_eligibility_config(eligibility_config_payload)
+    if eligibility_error:
+        raise HTTPException(status_code=422, detail=eligibility_error)
+
+    return parsed["data"], title, weights, eligibility_config
 
 
 @router.post("/api/jobs/parse-preview", response_model=JobParsePreviewResponse)
 async def parse_job_preview(request: Request):
-    data, _, _ = await _parse_job_from_request(request)
+    data, _, _, _ = await _parse_job_from_request(request)
     return _preview_response(data)
 
 
 @router.post("/api/jobs", response_model=JobResponse, status_code=201)
 async def create_job(request: Request, db: Session = Depends(get_db)):
-    data, title, weights = await _parse_job_from_request(request)
+    data, title, weights, eligibility_config_override = await _parse_job_from_request(request)
 
     job = Job(scoring_weights=weights)
     _apply_parsed_data(job, data, title)
+    if eligibility_config_override is not None:
+        job.eligibility_config = eligibility_config_override
     db.add(job)
     db.commit()
     db.refresh(job)
@@ -167,6 +196,12 @@ def update_job(job_id: str, payload: JobUpdateRequest, db: Session = Depends(get
         if weights_error:
             raise HTTPException(status_code=422, detail=weights_error)
         job.scoring_weights = weights
+
+    if payload.eligibility_config is not None:
+        eligibility_config, eligibility_error = _normalize_eligibility_config(payload.eligibility_config)
+        if eligibility_error:
+            raise HTTPException(status_code=422, detail=eligibility_error)
+        job.eligibility_config = eligibility_config
 
     db.commit()
     db.refresh(job)
