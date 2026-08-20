@@ -1,5 +1,4 @@
 from functools import lru_cache
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,7 +27,12 @@ class Settings(BaseSettings):
 
     @property
     def allowed_origins(self) -> list[str]:
-        return [origin.strip() for origin in self.frontend_origin.split(",") if origin.strip()]
+        # Strip trailing slashes so origin matching doesn't fail preflight checks
+        return [
+            origin.strip().rstrip("/") 
+            for origin in self.frontend_origin.split(",") 
+            if origin.strip()
+        ]
 
     @property
     def default_weights(self) -> dict:
