@@ -25,9 +25,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Parse allowed origins as a list, handling comma-separated env values cleanly
+if isinstance(settings.allowed_origins, str):
+    raw_origins = settings.allowed_origins.split(",")
+else:
+    raw_origins = settings.allowed_origins
+
+origins = [origin.strip().rstrip("/") for origin in raw_origins if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
