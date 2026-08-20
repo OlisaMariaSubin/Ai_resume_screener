@@ -13,7 +13,7 @@ from app.services import excel_export_service, explanation_service, fairness_aud
 router = APIRouter()
 
 
-@router.post("/api/screen/{job_id}/rerun", response_model=ScreeningResultsResponse)
+@router.post("/screen/{job_id}/rerun", response_model=ScreeningResultsResponse)
 def rerun_screening(job_id: str, db: Session = Depends(get_db)):
     job = db.get(Job, job_id)
     if not job:
@@ -186,7 +186,7 @@ def eligibility_summary(results: list[dict]) -> dict:
     }
 
 
-@router.post("/api/screen", response_model=ScreeningResultSchema)
+@router.post("/screen", response_model=ScreeningResultSchema)
 def screen_single(payload: SingleScreenRequest, db: Session = Depends(get_db)):
     job = db.get(Job, payload.job_id)
     if not job:
@@ -209,7 +209,7 @@ def screen_single(payload: SingleScreenRequest, db: Session = Depends(get_db)):
     return match
 
 
-@router.get("/api/screen/{job_id}/results", response_model=ScreeningResultsResponse)
+@router.get("/screen/{job_id}/results", response_model=ScreeningResultsResponse)
 def get_results(job_id: str, skills: str | None = Query(default=None), db: Session = Depends(get_db)):
     job = db.get(Job, job_id)
     if not job:
@@ -230,7 +230,7 @@ def get_results(job_id: str, skills: str | None = Query(default=None), db: Sessi
     return {"job_id": job_id, "results": results}
 
 
-@router.post("/api/screen/{job_id}/{resume_id}/explain")
+@router.post("/screen/{job_id}/{resume_id}/explain")
 def explain_score(job_id: str, resume_id: str, db: Session = Depends(get_db)):
     job = db.get(Job, job_id)
     if not job:
@@ -274,7 +274,7 @@ def explain_score(job_id: str, resume_id: str, db: Session = Depends(get_db)):
     return {"explanation": row.explanation, "cached": False}
 
 
-@router.get("/api/screen/{job_id}/audit")
+@router.get("/screen/{job_id}/audit")
 def get_audit(job_id: str, db: Session = Depends(get_db)):
     job = db.get(Job, job_id)
     if not job:
@@ -287,7 +287,7 @@ def get_audit(job_id: str, db: Session = Depends(get_db)):
     }
 
 
-@router.get("/api/screen/{job_id}/trends")
+@router.get("/screen/{job_id}/trends")
 def get_trends(job_id: str, db: Session = Depends(get_db)):
     job = db.get(Job, job_id)
     if not job:
@@ -302,7 +302,7 @@ def get_trends(job_id: str, db: Session = Depends(get_db)):
     }
 
 
-@router.get("/api/screen/{job_id}/export/excel")
+@router.get("/screen/{job_id}/export/excel")
 def export_excel(job_id: str, db: Session = Depends(get_db)):
     job = db.get(Job, job_id)
     if not job:

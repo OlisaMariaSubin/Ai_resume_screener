@@ -11,7 +11,7 @@ from app.utils.file_validation import ALLOWED_EXTENSIONS, FileValidationError, s
 router = APIRouter()
 
 
-@router.post("/api/resumes", response_model=ResumeResponse, status_code=201)
+@router.post("/resumes", response_model=ResumeResponse, status_code=201)
 async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_db)):
     settings = get_settings()
     content = await file.read()
@@ -45,7 +45,7 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
     )
 
 
-@router.get("/api/resumes/{resume_id}", response_model=ResumeResponse)
+@router.get("/resumes/{resume_id}", response_model=ResumeResponse)
 def get_resume(resume_id: str, db: Session = Depends(get_db)):
     resume = db.get(Resume, resume_id)
     if not resume:
@@ -58,7 +58,7 @@ def get_resume(resume_id: str, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/api/resumes/{resume_id}/content", response_model=ResumeContentResponse)
+@router.get("/resumes/{resume_id}/content", response_model=ResumeContentResponse)
 def get_resume_content(resume_id: str, db: Session = Depends(get_db)):
     resume = db.get(Resume, resume_id)
     if not resume:

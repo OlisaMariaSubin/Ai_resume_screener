@@ -16,7 +16,7 @@ from app.utils.file_validation import ALLOWED_EXTENSIONS, FileValidationError, s
 router = APIRouter()
 
 
-@router.post("/api/screen/bulk", response_model=ScreeningResultsResponse)
+@router.post("/screen/bulk", response_model=ScreeningResultsResponse)
 async def bulk_screen(
     job_id: str = Form(...),
     files: list[UploadFile] = File(...),

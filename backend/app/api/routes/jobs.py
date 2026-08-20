@@ -144,13 +144,13 @@ async def _parse_job_from_request(request: Request) -> tuple[dict, str, dict | N
     return parsed["data"], title, weights, eligibility_config
 
 
-@router.post("/api/jobs/parse-preview", response_model=JobParsePreviewResponse)
+@router.post("/jobs/parse-preview", response_model=JobParsePreviewResponse)
 async def parse_job_preview(request: Request):
     data, _, _, _ = await _parse_job_from_request(request)
     return _preview_response(data)
 
 
-@router.post("/api/jobs", response_model=JobResponse, status_code=201)
+@router.post("/jobs", response_model=JobResponse, status_code=201)
 async def create_job(request: Request, db: Session = Depends(get_db)):
     data, title, weights, eligibility_config_override = await _parse_job_from_request(request)
 
@@ -165,7 +165,7 @@ async def create_job(request: Request, db: Session = Depends(get_db)):
     return _job_response(job)
 
 
-@router.get("/api/jobs/{job_id}", response_model=JobResponse)
+@router.get("/jobs/{job_id}", response_model=JobResponse)
 def get_job(job_id: str, db: Session = Depends(get_db)):
     job = db.get(Job, job_id)
     if not job:
@@ -173,7 +173,7 @@ def get_job(job_id: str, db: Session = Depends(get_db)):
     return _job_response(job)
 
 
-@router.patch("/api/jobs/{job_id}", response_model=JobResponse)
+@router.patch("/jobs/{job_id}", response_model=JobResponse)
 def update_job(job_id: str, payload: JobUpdateRequest, db: Session = Depends(get_db)):
     job = db.get(Job, job_id)
     if not job:
