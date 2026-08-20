@@ -28,18 +28,14 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Root-level health endpoint (for direct service checks)
 app.include_router(health.router)
-
-# API v1 prefix routes (required by the frontend api.js service)
-app.include_router(health.router, prefix="/api/v1")
-app.include_router(jobs.router, prefix="/api/v1")
-app.include_router(resumes.router, prefix="/api/v1")
-app.include_router(screening.router, prefix="/api/v1")
-app.include_router(bulk.router, prefix="/api/v1")
+app.include_router(jobs.router)
+app.include_router(resumes.router)
+app.include_router(screening.router)
+app.include_router(bulk.router)
