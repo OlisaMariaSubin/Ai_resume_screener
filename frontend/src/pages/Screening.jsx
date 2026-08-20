@@ -55,18 +55,30 @@ export default function Screening() {
   }
 
   return (
-    <div>
-      <h1>Create a screening</h1>
+    <div className="page-enter workflow-page">
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">New workspace / 02</p>
+          <h1>Build a screening</h1>
+          <p className="subtitle">Set the brief, add your candidate pool, and let the evidence shape the shortlist.</p>
+        </div>
+        <span className="step-counter">01 <i /> 02 <i /> 03</span>
+      </div>
       <p className="subtitle">Provide a job description and one or more resumes to screen against it.</p>
 
       {error && <div className="error-banner">{error}</div>}
 
-      <JobDescriptionInput value={job} onChange={setJob} />
-      <ResumeUpload files={resumeFiles} onFilesChange={setResumeFiles} />
+      <div className="workflow-grid">
+        <JobDescriptionInput value={job} onChange={setJob} />
+        <ResumeUpload files={resumeFiles} onFilesChange={setResumeFiles} />
+      </div>
 
-      <button type="button" className="btn btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
-        Run screening
-      </button>
+      <div className="action-row">
+        <button type="button" className="btn btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
+          Run screening <span aria-hidden="true">-&gt;</span>
+        </button>
+        <span className="action-note">{resumeFiles.length || 0} resume{resumeFiles.length === 1 ? "" : "s"} ready</span>
+      </div>
       {!jdReady && <p className="muted">Add a job description to continue.</p>}
       {jdReady && resumeFiles.length === 0 && <p className="muted">Add at least one resume to continue.</p>}
     </div>

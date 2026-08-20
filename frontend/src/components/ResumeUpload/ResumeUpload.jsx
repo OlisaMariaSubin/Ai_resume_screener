@@ -8,7 +8,15 @@ function formatSize(bytes) {
 
 export default function ResumeUpload({ files, onFilesChange }) {
   const [dragActive, setDragActive] = useState(false);
+  const [expandedFile, setExpandedFile] = useState(null);
   const inputRef = useRef(null);
+
+  function compactFilename(filename) {
+    const extensionIndex = filename.lastIndexOf(".");
+    const extension = extensionIndex > 0 ? filename.slice(extensionIndex) : "";
+    const basename = extensionIndex > 0 ? filename.slice(0, extensionIndex) : filename;
+    return `${basename.slice(0, 18)}${basename.length > 18 ? "..." : ""}${extension}`;
+  }
 
   function addFiles(fileList) {
     const incoming = Array.from(fileList).filter((f) => /\.(pdf|docx)$/i.test(f.name));
@@ -27,7 +35,13 @@ export default function ResumeUpload({ files, onFilesChange }) {
 
   return (
     <div className="card">
-      <h2>Resumes</h2>
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Candidate pool</p>
+          <h2>Resumes</h2>
+        </div>
+        <span className="file-count">{files.length} added</span>
+      </div>
       <div
         className={`dropzone ${dragActive ? "active" : ""}`}
         onDragOver={(e) => {
@@ -50,26 +64,39 @@ export default function ResumeUpload({ files, onFilesChange }) {
       </div>
 
       {files.length > 0 && (
-        <ul className="file-list">
-          {files.map((file, i) => (
-            <li className="file-row" key={`${file.name}-${i}`}>
-              <span>
-                {file.name} <span className="muted">({formatSize(file.size)})</span>
-              </span>
-              <span>
-                <span className="file-status pending">ready</span>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  style={{ marginLeft: 8, padding: "2px 8px" }}
-                  onClick={() => removeFile(i)}
-                >
-                  Remove
-                </button>
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="file-list-scroll">
+          <ul className="file-list">
+            {files.map((file, i) => (
+              <li className="file-row" key={`${file.name}-${i}`}>
+                <span className={`file-name ${expandedFile === i ? "expanded" : ""}`} title={file.name}>
+                  {expandedFile === i ? file.name : compactFilename(file.name)}{" "}
+                  <span className="muted">({formatSize(file.size)})</span>
+                  {file.name.length > 22 && (
+                    <button
+                      type="button"
+                      className="filename-toggle"
+                      aria-label={`${expandedFile === i ? "Collapse" : "Expand"} filename`}
+                      onClick={() => setExpandedFile(expandedFile === i ? null : i)}
+                    >
+                      {expandedFile === i ? "less" : "..."}
+                    </button>
+                  )}
+                </span>
+                <span>
+                  <span className="file-status pending">ready</span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ marginLeft: 8, padding: "2px 8px" }}
+                    onClick={() => removeFile(i)}
+                  >
+                    Remove
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

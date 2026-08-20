@@ -7,8 +7,8 @@ services:
       - DATABASE_URL=sqlite:///./resume_screening.db
       - MATCHING_METHOD=tfidf
       - FRONTEND_ORIGIN=http://localhost:5173
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - ANTHROPIC_MODEL=claude-opus-5
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=gemini-3.6-flash
     volumes:
       - backend_data:/app/data
 

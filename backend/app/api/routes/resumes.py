@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.database.database import get_db
 from app.models.resume import Resume
-from app.schemas.resume import ResumeResponse, ResumeStructuredData
+from app.schemas.resume import ResumeContentResponse, ResumeResponse, ResumeStructuredData
 from app.services.resume_parser import parse_resume_bytes
 from app.utils.file_validation import ALLOWED_EXTENSIONS, FileValidationError, sanitize_filename, validate_upload
 
@@ -55,4 +55,17 @@ def get_resume(resume_id: str, db: Session = Depends(get_db)):
         filename=resume.filename,
         candidate_name=resume.candidate_name,
         structured_data=ResumeStructuredData(**resume.structured_data),
+    )
+
+
+@router.get("/api/resumes/{resume_id}/content", response_model=ResumeContentResponse)
+def get_resume_content(resume_id: str, db: Session = Depends(get_db)):
+    resume = db.get(Resume, resume_id)
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    return ResumeContentResponse(
+        resume_id=resume.id,
+        filename=resume.filename,
+        candidate_name=resume.candidate_name,
+        raw_text=resume.raw_text,
     )

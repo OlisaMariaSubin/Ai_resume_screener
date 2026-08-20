@@ -63,6 +63,8 @@ export const api = {
 
   getJob: (jobId) => request(`/api/jobs/${jobId}`),
 
+  getResumeContent: (resumeId) => request(`/api/resumes/${resumeId}/content`),
+
   updateJob: (jobId, { title, description, scoringWeights }) =>
     request(`/api/jobs/${jobId}`, {
       method: "PATCH",

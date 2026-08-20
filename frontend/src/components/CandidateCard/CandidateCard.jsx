@@ -1,9 +1,22 @@
+import { useState } from "react";
 import MatchScore from "../MatchScore/MatchScore.jsx";
 import SkillList from "../SkillList/SkillList.jsx";
 import ExplanationPanel from "../ExplanationPanel/ExplanationPanel.jsx";
+import { api } from "../../services/api.js";
 
 export default function CandidateCard({ jobId, candidate, onClose }) {
   const { score, skills } = candidate;
+  const [resumeState, setResumeState] = useState({ status: "idle", text: "" });
+
+  async function handleViewResume() {
+    setResumeState({ status: "loading", text: "" });
+    try {
+      const result = await api.getResumeContent(candidate.candidate_id);
+      setResumeState({ status: "done", text: result.raw_text });
+    } catch (err) {
+      setResumeState({ status: "error", text: err.message || "Could not load the resume." });
+    }
+  }
 
   return (
     <div className="candidate-modal-backdrop" onClick={onClose}>
@@ -16,6 +29,22 @@ export default function CandidateCard({ jobId, candidate, onClose }) {
           <p className="muted">Could not be parsed: {candidate.failure_reason}</p>
         ) : (
           <>
+            <div className="candidate-actions">
+              <button type="button" className="btn btn-secondary" onClick={handleViewResume} disabled={resumeState.status === "loading"}>
+                {resumeState.status === "loading" ? "Loading resume..." : "View resume"}
+              </button>
+              <span className="muted">{candidate.filename}</span>
+            </div>
+            {resumeState.status === "done" && (
+              <div className="resume-viewer">
+                <div className="resume-viewer-heading">
+                  <strong>Extracted resume text</strong>
+                  <span className="muted">Read-only</span>
+                </div>
+                <pre>{resumeState.text || "No text was extracted from this resume."}</pre>
+              </div>
+            )}
+            {resumeState.status === "error" && <p className="error-text">{resumeState.text}</p>}
             <div style={{ margin: "12px 0" }}>
               <MatchScore score={score.overall} size="large" />
             </div>

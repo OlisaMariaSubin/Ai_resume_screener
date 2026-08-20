@@ -39,7 +39,7 @@ FastAPI backend                                                     |
    |       per-file failures so one bad file doesn't kill the batch)|
    |                                                                |
    |-- Optional modules (Section 9)                                 |
-   |     services/explanation_service.py (Anthropic API, on demand, |
+   |     services/explanation_service.py (Gemini API, on demand,    |
    |       cached per job+resume)                                   |
    |     services/fairness_audit.py (JD language scan +             |
    |       score-distribution stats)                                |

@@ -47,11 +47,15 @@ export default function Results() {
   if (!results) return <p className="muted">Loading results…</p>;
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8 }}>
-        <h1 style={{ margin: 0 }}>Results</h1>
+    <div className="page-enter results-page">
+      <div className="page-heading results-heading">
+        <div>
+          <p className="eyebrow">Shortlist / 03</p>
+          <h1>Screening results</h1>
+          <p className="subtitle">A ranked view of fit, with the reasoning close at hand.</p>
+        </div>
         <Link to={`/results/${jobId}/edit`} className="btn btn-secondary">
-          Edit job description &amp; re-run
+          Edit brief <span aria-hidden="true">-&gt;</span>
         </Link>
       </div>
 

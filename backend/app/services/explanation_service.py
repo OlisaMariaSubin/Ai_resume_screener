@@ -1,4 +1,4 @@
-"""LLM-generated match explanations (Section 9.2). Grounded strictly in the
+"""Gemini-generated match explanations (Section 9.2). Grounded strictly in the
 score/skills data already computed elsewhere - never invents facts, never
 recommends hire/reject.
 """
@@ -21,7 +21,7 @@ SYSTEM_PROMPT = (
 
 
 def is_configured() -> bool:
-    return bool(get_settings().anthropic_api_key.strip())
+    return bool(get_settings().gemini_api_key.strip())
 
 
 def generate_explanation(score: dict, skills: dict, must_have_skills: list[str], nice_to_have_skills: list[str]) -> dict:
@@ -29,11 +29,11 @@ def generate_explanation(score: dict, skills: dict, must_have_skills: list[str],
     Never falls back to a fake canned explanation.
     """
     settings = get_settings()
-    if not settings.anthropic_api_key.strip():
+    if not settings.gemini_api_key.strip():
         return {"success": False, "error": UNAVAILABLE_MESSAGE}
 
     try:
-        import anthropic
+        from google import genai
     except ImportError:
         return {"success": False, "error": UNAVAILABLE_MESSAGE}
 
@@ -53,22 +53,16 @@ def generate_explanation(score: dict, skills: dict, must_have_skills: list[str],
     )
 
     try:
-        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        response = client.messages.create(
-            model=settings.anthropic_model,
-            max_tokens=400,
-            system=SYSTEM_PROMPT,
-            output_config={"effort": "low"},
-            messages=[{"role": "user", "content": user_content}],
+        client = genai.Client(api_key=settings.gemini_api_key)
+        response = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=f"{SYSTEM_PROMPT}\n\n{user_content}",
         )
     except Exception as exc:
         logger.warning("Explanation generation failed: %s", exc)
         return {"success": False, "error": UNAVAILABLE_MESSAGE}
 
-    if response.stop_reason == "refusal":
-        return {"success": False, "error": UNAVAILABLE_MESSAGE}
-
-    text = "".join(block.text for block in response.content if block.type == "text").strip()
+    text = (response.text or "").strip()
     if not text:
         return {"success": False, "error": UNAVAILABLE_MESSAGE}
 

@@ -10,8 +10,13 @@ export default function App() {
       <header className="app-header">
         <div className="app-header-inner">
           <a href="/" className="brand">
-            <span className="brand-mark">AI</span> Resume Screening Assistant
+            <span className="brand-mark">AI</span>
+            <span>
+              <strong>Shortlist</strong>
+              <small>Resume intelligence</small>
+            </span>
           </a>
+          <span className="header-status"><i /> Screening workspace</span>
         </div>
       </header>
       <main className="app-main">

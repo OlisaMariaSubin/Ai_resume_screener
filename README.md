@@ -57,7 +57,7 @@ SQLAlchemy/SQLite (Postgres-compatible) → results API.
 - **Parsing:** pdfplumber, python-docx, spaCy (tokenization + phrase matching)
 - **Matching:** scikit-learn (`TfidfVectorizer`, required baseline),
   sentence-transformers (`all-MiniLM-L6-v2`, optional hybrid upgrade)
-- **Optional add-ons:** Anthropic Python SDK (match explanations, no-ops
+- **Optional add-ons:** Google Gemini Python SDK (match explanations, no-ops
   cleanly without an API key)
 - **Frontend:** React + Vite, plain CSS
 - **Deploy:** Docker + docker-compose; backend targets Render/Railway-style

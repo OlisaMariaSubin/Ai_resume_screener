@@ -1,8 +1,14 @@
 export default function FileUpload({ id, label, accept, onFile, selectedName }) {
   return (
     <div className="field">
-      {label && <label htmlFor={id}>{label}</label>}
+      {label && <span className="file-picker-label">{label}</span>}
+      <label className="file-picker" htmlFor={id}>
+        <span className="file-picker-icon" aria-hidden="true">+</span>
+        <span>{selectedName || "Choose a file"}</span>
+        <span className="file-picker-action">Browse</span>
+      </label>
       <input
+        className="file-input-hidden"
         id={id}
         type="file"
         accept={accept}

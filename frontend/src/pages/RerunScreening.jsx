@@ -69,17 +69,25 @@ export default function RerunScreening() {
   }
 
   return (
-    <div>
-      <h1>Edit job description</h1>
+    <div className="page-enter workflow-page">
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">Rerun workspace / 02</p>
+          <h1>Refine the brief</h1>
+          <p className="subtitle">Tune the role without losing the candidate pool already in review.</p>
+        </div>
+        <span className="step-counter">01 <i /> <b>02</b> <i /> 03</span>
+      </div>
       <p className="subtitle">
         Update the job description and re-run screening against the same uploaded resumes.
       </p>
 
       {error && <div className="error-banner">{error}</div>}
 
-      <JobDescriptionInput value={job} onChange={setJob} />
+      <div className="workflow-grid rerun-grid">
+        <JobDescriptionInput value={job} onChange={setJob} />
 
-      <div className="card">
+      <div className="card saved-pool">
         <h2>Resumes to re-screen</h2>
         {resumes.length === 0 ? (
           <p className="muted">No stored resumes found for this screening.</p>
@@ -99,8 +107,9 @@ export default function RerunScreening() {
           </ul>
         )}
       </div>
+      </div>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <div className="action-row">
         <button type="button" className="btn btn-primary" disabled={!canSubmit} onClick={handleRerun}>
           Re-run screening
         </button>

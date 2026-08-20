@@ -17,3 +17,10 @@ class ResumeResponse(BaseModel):
     filename: str
     candidate_name: str
     structured_data: ResumeStructuredData
+
+
+class ResumeContentResponse(BaseModel):
+    resume_id: str
+    filename: str
+    candidate_name: str
+    raw_text: str
